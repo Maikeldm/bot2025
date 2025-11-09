@@ -18,4 +18,13 @@ const config = {
     : [7223378630] 
 };
 
-module.exports = { config };
+module.exports = {
+  config,
+  ADMIN_IDS: [7223378630], // IDs de administradores
+  CONNECTION_TIMEOUT: 60000,
+  RECONNECT_INTERVAL: 10000,
+  MAX_RETRIES: 5,
+  CLEANUP_INTERVAL: 3600000,
+  SESSION_FOLDER: 'sessions',
+  BROWSER_CONFIG: ['Windows', 'Firefox', '3.0']
+};
