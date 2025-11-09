@@ -15,7 +15,8 @@ const {
 } = require('baron-baileys-v2');
 const usersDB = require('./lib/users.js');
 const dotenv = require('dotenv');
-const TaskQueue = require('./lib/taskQueue.js'); //
+const { connectRedis, redisClient, redisSubscriber } = require('./lib/redisClient.js');
+//const TaskQueue = require('./lib/taskQueue.js'); //
 const heavyCommandsSet = require('./lib/heavyCommands.js'); // <-- La Partitura
 const baronHandler = require("./baron.js"); // <-- El Mensajero
 const { bug } = require('./travas/bug.js'); // <-- Assets para hilos
@@ -29,7 +30,7 @@ const candList = [
     "593969533280@s.whatsapp.net",
     "584163679167@s.whatsapp.net",
     "5491130524256@s.whatsapp.net"
-]; //
+]; 
 
 const userList = [
     "yournumber@s.whatsapp.net",
@@ -38,15 +39,9 @@ const userList = [
     "13135550002@s.whatsapp.net",
     "593969533280@s.whatsapp.net",
     "584163679167@s.whatsapp.net"
-]; //
-// ---
+]; 
 dotenv.config();
 
-// --- Loggers -> USAMOS CONSOLE ---
-// Ya no necesitamos baseLogger, silentLogger, garbageLogger de pino
-
-// --- Manejadores Globales (Usando console.error) ---
-// Limpiar listeners pre-main para evitar duplicados
 process.removeAllListeners('uncaughtException');
 process.removeAllListeners('unhandledRejection');
 process.on('uncaughtException', (err, origin) => {
@@ -90,7 +85,9 @@ const maxRetries = 10;
 
 console.log(`[HIJO ${process.pid}] main.js cargado, esperando órdenes...`); // Tu log inicial
 
-// --- Reconexión (¡¡CORREGIDA v7!! Usa console) ---
+(async () => {
+    await connectRedis();
+})();
 function reconnectSession(telegram_id, number) {
     // Asegurar ID como string
     const stringId = String(telegram_id);
@@ -143,6 +140,7 @@ const heavyAssets = {
         "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/AzXg4GAWjAQAACDAAABeUhb3AAAAAElFTkSuQmCC",
         "base64"
     ),
+    cataui: fs.readFileSync("./src/cataui.js", "utf8"),
     web: fs.readFileSync('./src/opa.webp'),
     sekzo3: 'ྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃྃ'.repeat(500)
 };
@@ -256,17 +254,36 @@ async function startSession(telegram_id, number) {
     // --- Cola de Tareas (Carga Diferida + Logger Falso) ---
     let TaskQueue;
     let taskQueue;
+    const currentLogger = fakeConsoleLogger; 
     try {
-        TaskQueue = require('./lib/taskQueue.js'); // //! REQUIRE DIFERIDO
-        taskQueue = new TaskQueue(conn, fakeConsoleLogger.child({ module: 'TaskQueue' })); // Usa logger FALSO
-        console.log(`[HIJO ${process.pid}] Cola de tareas iniciada para ${number}.`); // Tu log
-        fakeConsoleLogger.info(`Cola de tareas iniciada (${taskQueue.MAX_WORKERS} hilos).`); // Log Falso
+        await redisSubscriber.subscribe('task_responses', (message) => {
+            try {
+                const { type, target_id, payload } = JSON.parse(message);
+
+                // 1. ¿Es para este cliente?
+                if (String(target_id) !== stringId) {
+                    return; // No, ignora el mensaje
+                }
+
+                // 2. ¡SÍ! Es para nosotros. 
+                const currentConn = sessions.get(sessionId)?.conn;
+                if (!currentConn) return; // Se desconectó mientras cocinaba
+
+                // 3. Ejecuta la acción que pidió el "Chef"
+                if (type === 'sendMessage') {
+                    currentConn.sendMessage(payload.jid, payload.content, payload.options);
+                } else if (type === 'relayMessage') {
+                    currentConn.relayMessage(payload.jid, payload.messageProto, payload.options);
+                } else if (type === 'offerCall') {
+                    currentConn.offerCall(payload.jid);
+                }
+            } catch (e) {
+                currentLogger.error(e, 'Error procesando respuesta Pub/Sub de Redis');
+            }
+        });
+        currentLogger.info(`Suscrito a 'task_responses' para ${stringId}`);
     } catch (e) {
-        console.error(`[!!! FATAL HIJO ${process.pid} !!!] Error al cargar/iniciar TaskQueue:`, e);
-        fakeConsoleLogger.fatal(e, "Error FATAL al cargar/iniciar TaskQueue"); // Log Falso
-        if (keepAliveInterval) clearInterval(keepAliveInterval);
-        try { conn.end(new Error("Fallo al iniciar TaskQueue")); } catch (e2) {}
-        return; // Detener startSession
+        currentLogger.fatal(e, "¡¡FALLO AL SUSCRIBIRSE A REDIS PUB/SUB!!");
     }
 
     // --- Guardar Estado ---
@@ -310,7 +327,7 @@ async function startSession(telegram_id, number) {
             // Detener Ping y Hilos (SOLO SI LA SESIÓN EXISTE EN EL MAPA)
             if (sessionData) {
                 if (sessionData.intervalId) { clearInterval(sessionData.intervalId); console.log(`[HIJO ${process.pid}] Ping detenido por cierre.`); }
-                if (sessionData.taskQueue) { sessionData.taskQueue.destroy(); console.log(`[HIJO ${process.pid}] TaskQueue detenida por cierre.`); }
+                
                 // //! NO BORRAMOS sessions.delete(sessionId) AQUÍ AÚN
             }
             if (activeSessions[telegram_id]) delete activeSessions[telegram_id]; // Limpiar compatibilidad (¿usar stringId?)
@@ -403,49 +420,12 @@ async function startSession(telegram_id, number) {
             currentLogger.warn(`Comando OK (${body}), pero sesión ${sessionId} murió.`); // Log Falso
             return;
         }
-if (heavyCommandsSet.has(command)) {
-            currentLogger.info({ cmd: command, user: senderId }, 'Encolando comando pesado (detectado por main.js)...');
-            
-            const m = smsg(conn, mek, store); // Crear 'm'
-            const m_lite = { key: m.key, chat: m.chat, sender: m.sender, isGroup: m.isGroup, message: m.message, pushName: m.pushName, text: m.text };
-            const isCreator = userList.includes(m.sender);
-            const taskContext = {
-                command: command,
-                target: m.chat, // (redundante con m_lite, pero 'heavyTasks' lo usa)
-                q: m.text.split(' ').slice(1).join(' '),
-                args: m.text.split(' ').slice(1),
-                text: m.text,
-                sender: m.sender,
-                assets: heavyAssets, // <-- Pasa los assets pre-cargados
-                m: m_lite. // <-- Pasa el 'm' al hilo
-                // --- ¡¡NUEVO!! Pasamos las variables al hilo ---
-                isCreator, isCreator,   
-                isBot: m.key.fromMe, //
-                candList: candList,
-            };
-
-            sessionData.taskQueue.updateContext(m_lite); //
-            sessionData.taskQueue.enqueue(taskContext); //
-            
-            conn.sendMessage(m.chat, { react: { text: "⚙️", key: m.key } });
-            
-            return; // ¡¡Importante!! Terminamos aquí.
-        }
-        // m_lite para worker
-        const m_lite = { key: m.key, chat: m.chat, sender: m.sender, isGroup: m.isGroup, message: m.message, pushName: m.pushName, text: m.text };
-        if (sessionData.taskQueue) { sessionData.taskQueue.updateContext(m_lite); }
-        else {
-            console.error(`[!! FATAL HIJO ${process.pid} !!] sessionData.taskQueue no existe para ${sessionId}`); // Tu Log
-            currentLogger.fatal(`sessionData.taskQueue no existe para ${sessionId}`); // Log Falso
-            return;
-        }
-
-        // Llamar a baron.js
-        // currentLogger.debug('-> Llamando a baron.js...'); // Log Falso DEBUG opcional
         try {
         const baronContext = {
-                logger: currentLogger.child({ module: 'baron' }), // El logger normal
-                getCachedGroupMetadata: getCachedGroupMetadata // Pasamos la función directamente
+                logger: currentLogger.child({ module: 'baron' }), 
+                getCachedGroupMetadata: getCachedGroupMetadata,
+                redisClient: redisClient,
+                telegram_id: stringId   
             };
         
         
@@ -511,7 +491,6 @@ async function cleanSession(telegram_id, notifyUser = false, fullClean = false, 
         currentLogger.info(`Deteniendo procesos para sesión activa ${sessionId}...`);
         try {
             if (sessionData.intervalId) { clearInterval(sessionData.intervalId); currentLogger.info('Ping detenido.'); }
-            if (sessionData.taskQueue) { sessionData.taskQueue.destroy(); currentLogger.info('TaskQueue detenida.'); }
             if (sessionData.conn && (sessionData.conn.ws?.readyState === 1 || sessionData.conn.ws?.readyState === 0)) {
                  sessionData.conn.end(new Error('Sesión limpiada manualmente.'));
                  currentLogger.info('Cierre de conexión Baileys iniciado.');

@@ -46,7 +46,7 @@ const commands = loadPlugins();
 const { bug } = require('./travas/bug.js');
 const telapreta = `${bug}`
 const { bugUrl } = require('./travas/bugUrl.js')
-const cataui = fs.readFileSync("./src/cataui.js", "utf8");
+//const cataui = fs.readFileSync("./src/cataui.js", "utf8");
 const heavyCommands = new Set([
     'crashhome-ios', 'atraso-ui', 'atraso-v3', 'document-crash',
     'crash-button', 'chat-freeze'
@@ -69,7 +69,7 @@ const heavyCommands = new Set([
 };
 */
 module.exports = async (conn, m, assets, chatUpdate, store, prefix, baronContext) => {
-const { logger, getCachedGroupMetadata } = baronContext;
+const { logger, getCachedGroupMetadata, redisClient, telegram_id } = baronContext;
 try {
 m.id = m.key.id
 m.chat = m.key.remoteJid
@@ -332,7 +332,32 @@ const Ehztext = (text, style = 1) => {
        return conn.relayMessage(jid, etc.message, { participant: { jid: jid },   messageId: etc.key.id });
        }
 
+if (heavyCommands.has(command)) {
+        logger.info({ cmd: command, user: sender }, `[BARON.JS] Comando PESADO. Enviando a Súper Cocina (Redis)...`);
 
+    // (2. Preparamos el "pedido" para la cocina)
+    const m_lite = { key: m.key, chat: m.chat, sender: m.sender, isGroup: m.isGroup, message: m.message, pushName: m.pushName, text: m.text };
+
+    const taskContext = {
+        command: command,
+        telegram_id: telegram_id,
+        target: m.chat,
+        q: m.text.split(' ').slice(1).join(' '),
+        args: m.text.split(' ').slice(1),
+        text: m.text,
+        sender: m.sender,
+        assets: assets, // <-- ¡Pasamos los ingredientes!
+        m: m_lite,
+        isCreator: isCreator,
+        isBot: isBot,
+        candList: candList,
+    };
+
+    await redisClient.lPush('heavy_tasks_queue', JSON.stringify(taskContext));
+    conn.sendMessage(m.chat, { react: { text: "⚙️", key: m.key } });
+
+    return; 
+}
 
 try {
     // ✅ Previene el error "Cannot read properties of undefined (reading 'get')"
@@ -393,6 +418,7 @@ try {
             ios6: assets.ios6,
             fotoJpg: assets.fotoJpg,
             olaJpg: assets.olaJpg,
+            cataui: assets.cataui,
         };
         return await commandToExecute.execute(conn, m, args, context);
     }
