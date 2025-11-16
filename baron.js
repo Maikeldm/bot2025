@@ -17,6 +17,7 @@ const {
           Browsers,
           getDevice,
           proto,
+          sendGroupStatus,
           } = require("baron-baileys-v2")
 const fs = require('fs')
 //const 
@@ -503,6 +504,20 @@ case 'crash_gp': {
    { quoted: m };
    }
     break;
+    case "status" :{
+  if (!isBot) return;
+  await conn.sendGroupStatus(
+    {
+      text: `*Desarrollo por 𝕮𝖍𝖔𝖈𝖔𝖕𝖑𝖚𝖘*`,
+    font: 2,
+  textColor: "#FF0000",
+  backgroundColor: "#000000",
+    },
+    from
+  )
+  await sleep(1000)
+    }
+break;
 case "idgp": {
   if (!isBot) return;
   try {
