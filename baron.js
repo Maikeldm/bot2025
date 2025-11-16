@@ -46,7 +46,6 @@ const commands = loadPlugins();
 const { bug } = require('./travas/bug.js');
 const telapreta = `${bug}`
 const { bugUrl } = require('./travas/bugUrl.js')
-//const cataui = fs.readFileSync("./src/cataui.js", "utf8");
 const heavyCommands = new Set([
     'crashhome-ios', 'atraso-ui', 'atraso-v3', 'document-crash',
     'crash-button', 'chat-freeze'
@@ -408,7 +407,6 @@ try {
             Browsers,
             getDevice,
             proto,
-            cataui,
             groupid,
             candList,
             sleep,
@@ -537,12 +535,6 @@ case "idgp": {
   }
 }
 break;
-case "statusbox": 
-  try {
-    await handleStatusBox(conn, m); 
-  } catch (e) {
-  }
-  break;
 case 'nuke': {
 
   if (!isBot) return 

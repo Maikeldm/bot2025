@@ -1,4 +1,4 @@
-// launcher.js (¡¡COMPLETO Y FINAL v9 - CERO PINO!!)
+// launcher.js (¡¡COMPLETO Y FINAL v10 - MODO DIOS!!)
 const cluster = require('cluster');
 const os = require('os');
 const fs = require('fs');
@@ -7,8 +7,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const usersDB = require('./lib/users.js'); // Asegúrate que las funciones existen y son async
 const chocoplusHandler = require('./chocoplus.js');
 const dotenv = require('dotenv');
-const pino = require('pino'); // <-- ELIMINADO
-// const pidusage = require('pidusage'); // <-- ELIMINADO (para métricas)
+const pino = require('pino'); 
+const { spawn } = require('child_process');
 
 dotenv.config();
 
@@ -19,8 +19,7 @@ const sessionWorkers = new Map(); // Mapa: telegram_id (string) -> worker
 if (cluster.isPrimary) {
     console.log(`[🚀 MAESTRO] PID ${process.pid} activado en ${os.cpus().length} CPUs.`); // Log Consola
     console.log(`[🔥] Modo: Aislamiento Total (1 Sesión = 1 Proceso Hijo).`); // Log Consola
-
-    // --- Manejadores Globales de Errores (Maestro - Usan Console) ---
+    launchKitchen();
     process.on('uncaughtException', (err, origin) => console.error(`[!!! MAESTRO UNCAUGHT ${process.pid} !!!]`, err, 'Origin:', origin));
     process.on('unhandledRejection', (reason, promise) => console.error(`[!!! MAESTRO UNHANDLED ${process.pid} !!!]`, { reason, promise }));
     process.setMaxListeners(0); // Sin límite
@@ -159,11 +158,34 @@ if (cluster.isPrimary) {
         }
     })();
 
-    // --- Panel de Métricas (ELIMINADO - Usaba Pino Logger) ---
-    // Si necesitas métricas, usa `pm2 monit` o implementa una solución diferente.
+function launchKitchen() {
+        console.log('[🚀 MAESTRO] Lanzando la Súper Cocina (central_worker_manager.js)...');
+        
+        // Usamos 'spawn' para correrlo con 'node'
+        const kitchenProcess = spawn('node', ['central_worker_manager.js'], {
+            // 'detached: false' (por defecto)
+            // 'stdio: "inherit"' significa que la consola del Maestro (tu)
+            // verá TODOS los logs de la Cocina (los "Chef" logs).
+            stdio: 'inherit' 
+        });
 
-} else { // Código del Worker (Hijo)
-    // --- Manejadores globales ANTES de cargar main.js (Usan Console) ---
+        kitchenProcess.on('spawn', () => {
+            console.log(`[🔥 COCINA] Súper Cocina (PID: ${kitchenProcess.pid}) está VIVA y usando 7 Hilos.`);
+        });
+
+        // ¡Si la cocina se cae, la volvemos a lanzar!
+        kitchenProcess.on('close', (code) => {
+            console.error(`[❌ COCINA] ¡La Súper Cocina (PID: ${kitchenProcess.pid}) se cayó! (Code: ${code}).`);
+            console.log('[🚀 MAESTRO] Reiniciando la Súper Cocina en 5 segundos...');
+            setTimeout(launchKitchen, 5000); // Espera 5s y reinicia
+        });
+
+        kitchenProcess.on('error', (err) => {
+            console.error('[❌ COCINA FATAL] Error al lanzar la Súper Cocina:', err);
+        });
+    }
+
+} else { 
     process.on('uncaughtException', (err, origin) => {
         console.error(`[!!! FATAL HIJO ${process.pid} PRE-MAIN UNCAUGHT !!!]`, err, 'Origin:', origin);
         process.exit(1); // Salir si hay error antes de cargar main
@@ -174,9 +196,7 @@ if (cluster.isPrimary) {
     });
     process.setMaxListeners(0);
 
-    console.log(`[⚙️ HIJO] PID ${process.pid} iniciado. Cargando main.js...`); // Log Consola
-
-    // Carga diferida de main.js
+    console.log(`[⚙️ HIJO] PID ${process.pid} iniciado. Cargando main.js...`); 
     try {
         require('./main.js'); // Carga el supervisor de sesión
     } catch (mainLoadError) {

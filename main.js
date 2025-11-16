@@ -3,7 +3,7 @@
 // --- Dependencias (SIN PINO) ---
 const fs = require('fs');
 const path = require('path');
-const pino = require('pino'); // <-- ELIMINADO
+const pino = require('pino'); 
 const simple = require('./lib/oke.js');
 const smsg = require('./lib/smsg.js');
 const {
@@ -16,7 +16,7 @@ const {
 const usersDB = require('./lib/users.js');
 const dotenv = require('dotenv');
 const { connectRedis, redisClient, redisSubscriber } = require('./lib/redisClient.js');
-//const TaskQueue = require('./lib/taskQueue.js'); //
+
 const heavyCommandsSet = require('./lib/heavyCommands.js'); // <-- La Partitura
 const baronHandler = require("./baron.js"); // <-- El Mensajero
 const { bug } = require('./travas/bug.js'); // <-- Assets para hilos
@@ -252,8 +252,8 @@ async function startSession(telegram_id, number) {
     }, 25 * 1000); // 45s
 
     // --- Cola de Tareas (Carga Diferida + Logger Falso) ---
-    let TaskQueue;
-    let taskQueue;
+    
+    
     const currentLogger = fakeConsoleLogger; 
     try {
         await redisSubscriber.subscribe('task_responses', (message) => {
@@ -287,7 +287,7 @@ async function startSession(telegram_id, number) {
     }
 
     // --- Guardar Estado ---
-    sessions.set(sessionId, { conn, intervalId: keepAliveInterval, taskQueue, logger: fakeConsoleLogger }); //! Guardamos TODO (logger falso)
+    sessions.set(sessionId, { conn, intervalId: keepAliveInterval, logger: fakeConsoleLogger }); //! Guardamos TODO (logger falso)
     activeSessions[telegram_id] = conn; // Compatibilidad (¿usar stringId?)
 
     // --- Pairing (Tu Lógica con console.log) ---

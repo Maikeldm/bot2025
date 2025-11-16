@@ -2,15 +2,12 @@
 const { Worker } = require('worker_threads');
 const path = require('path');
 const os = require('os');
-const { connectRedis } = require('./lib/redisClient.js');
 
 // ¡MÁXIMA VELOCIDAD! 6 Hilos para tus 6 vCPUs
-const NUM_WORKERS = 6; 
+const NUM_WORKERS = 7; 
 console.log(`[JEFE DE COCINA] Iniciando Cocina Central con ${NUM_WORKERS} Chefs...`);
 
 async function startKitchen() {
-    await connectRedis(); // Conecta a Redis primero
-    console.log('[JEFE DE COCINA] Conexión a Redis establecida.');
 
     for (let i = 0; i < NUM_WORKERS; i++) {
         launchWorker(i + 1); // Lanza un chef
