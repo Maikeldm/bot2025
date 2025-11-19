@@ -68,7 +68,7 @@ const heavyCommands = new Set([
     )
 };
 */
-module.exports = async (conn, m, assets, chatUpdate, store, prefix, baronContext) => {
+module.exports = async (conn, m, assets, chatUpdate,prefix, baronContext) => {
 const { logger, getCachedGroupMetadata, redisClient, telegram_id } = baronContext;
 try {
 m.id = m.key.id

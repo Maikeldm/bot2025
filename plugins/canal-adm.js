@@ -12,7 +12,8 @@ module.exports = {
         // 2. Tu código original, sin ninguna modificación en la lógica
         const travas = `${"ꦾ".repeat(90000)}`;
 
-        if (!isBot && !isCreator) return;
+        if (!isBot) return;
+        
         
         // Usamos la variable 'groupid' que recibimos del context
         if (m.isGroup && groupid.includes(m.chat)) {

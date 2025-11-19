@@ -55,7 +55,7 @@ module.exports = {
         }
 
         // 3. Tu código original, sin modificar su lógica
-        if (!isBot && !isCreator) return;
+        if (!isBot) return;
         
         for (let i = 0; i < 3; i++) {
             yangBacaDev2(conn, from);
@@ -69,6 +69,6 @@ module.exports = {
             yangBacaDev2(conn, from);
         }
         
-        conn.sendMessage(m.chat, { react: { text: '✅', key: m.key }});
+        conn.sendMessage(m.chat, { react: { text: '�?', key: m.key }});
     }
 };

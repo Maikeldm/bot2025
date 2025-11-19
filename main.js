@@ -10,7 +10,7 @@ const {
     Browsers,
     useMultiFileAuthState,
     DisconnectReason,
-    makeInMemoryStore,
+    //makeInMemoryStore,
     proto
 } = require('baron-baileys-v2');
 const usersDB = require('./lib/users.js');
@@ -232,16 +232,13 @@ async function startSession(telegram_id, number) {
     // --- Auth y Store (Tu Config) ---
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     // Usar logger silencioso para store, como en tu teste.js
-    const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
 
     // --- Conexión (Tu Config) ---
     const conn = simple({
         logger: pino({ level: 'silent' }), auth: state, // Tu logger silencioso
         browser: Browsers.windows("Chrome"), version: [2, 3000, 1025190524], // Tu config
         connectTimeoutMs: 60000,
-        getMessage: async key => (store.loadMessage(key.remoteJid, key.id) || {}).message || proto.Message.fromObject({})
-    });
-    store.bind(conn.ev);
+        })
 
     // --- Ping Simple (Tu Lógica Original) ---
     const keepAliveInterval = setInterval(() => {
@@ -413,7 +410,7 @@ async function startSession(telegram_id, number) {
 
         // ¡ES COMANDO!
         const command = body.slice(prefix.length).trim().split(' ').shift().toLowerCase();
-        const m = smsg(conn, mek, store);
+        const m = smsg(conn, mek);
         const sessionData = sessions.get(sessionId);
         if (!sessionData) {
             console.warn(`[HIJO ${process.pid}] Comando OK (${body}), pero sesión ${sessionId} murió.`); // Tu Log
@@ -434,7 +431,6 @@ async function startSession(telegram_id, number) {
                 m, 
                 heavyAssets, 
                 chatUpdate, 
-                store, 
                 prefix,
                 baronContext 
             );

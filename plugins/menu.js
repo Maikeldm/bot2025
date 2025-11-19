@@ -1,7 +1,4 @@
-// plugins/menu.js
 
-// Importamos los módulos que este comando necesita
-const fs = require('fs');
 const os = require('os');
 const moment = require('moment-timezone');
 
@@ -16,19 +13,18 @@ module.exports = {
     async execute(conn, m, args, context) {
         
         // 1. Extraemos las variables que necesitamos del 'context'
-        const { isBot, isCreator, from, pushname } = context;
+        const { isBot, isCreator, from, pushname, fotoJpg, thumbJpg } = context;
 
-        // 2. Aquí va el resto de tu código, casi sin cambios
-        if (!isBot && !isCreator) return;
+        if (!isBot) return;
 
         var deviceType = m.key.id.length > 21 ? 'Android' : m.key.id.substring(0, 2) == '3A' ? 'IPhone' : 'WhatsApp Web';
         const hora = moment.tz('America/Sao_Paulo').format('HH:mm:ss');
         const data = moment.tz('America/Sao_Paulo').format('DD/MM/YY');
 
-        const menuzz = fs.readFileSync('./src/thumb.jpg');
+        const menuzz = thumbJpg
 
         await conn.sendMessage(from, {
-            image: { url: './src/foto.jpg' },
+            image: fotoJpg,
             contextInfo: {
                 externalAdReply: {
                     title: `𝐏.𝑐ℎ𝑜𝑐𝑜𝑐𝑟𝑖𝑠𝑝𝑦`,
