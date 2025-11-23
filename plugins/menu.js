@@ -1,114 +1,146 @@
+// plugins/menu.js
+const crypto = require("crypto");
+const { proto, generateWAMessageFromContent, prepareWAMessageMedia } = require("baron-baileys-v2");
+const moment = require("moment-timezone");
+const os = require("os");
 
-const os = require('os');
-const moment = require('moment-timezone');
+// Texto decorado estilo Baron
+const Ehztext = (text, style = 1) => {
+    let abc = 'abcdefghijklmnopqrstuvwxyz1234567890'.split('');
+    let ehz = { 1: 'ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘqʀꜱᴛᴜᴠᴡxʏᴢ1234567890' };
+    let rep = abc.map((v, i) => ({ original: v, convert: ehz[style][i] }));
+
+    return text.toLowerCase()
+        .split('')
+        .map(v => {
+            let f = rep.find(x => x.original === v);
+            return f ? f.convert : v;
+        }).join('');
+};
 
 module.exports = {
-    // Nombre principal del comando
-    name: 'menu',
-    
-    // Otros nombres con los que se puede llamar al comando
-    alias: ['start'],
+    name: "menu",
+    alias: ["start"],
 
-    // La función principal que se ejecutará
     async execute(conn, m, args, context) {
-        
-        // 1. Extraemos las variables que necesitamos del 'context'
-        const { isBot, isCreator, from, pushname, fotoJpg, thumbJpg } = context;
 
+        const { isBot, isCreator, from, pushname, fotoJpg, thumbJpg } = context;
         if (!isBot) return;
 
-        var deviceType = m.key.id.length > 21 ? 'Android' : m.key.id.substring(0, 2) == '3A' ? 'IPhone' : 'WhatsApp Web';
-        const hora = moment.tz('America/Sao_Paulo').format('HH:mm:ss');
-        const data = moment.tz('America/Sao_Paulo').format('DD/MM/YY');
+        // Tiempo y sistema
+        const hora = moment.tz("America/Guayaquil").format("HH:mm:ss");
+        const fecha = moment.tz("America/Guayaquil").format("DD/MM/YY");
+        const deviceType = m.key.id.length > 21 
+            ? 'Android' 
+            : m.key.id.startsWith("3A") 
+                ? 'IPhone' 
+                : 'WhatsApp Web';
 
-        const menuzz = thumbJpg
-
-        await conn.sendMessage(from, {
-            image: fotoJpg,
-            contextInfo: {
-                externalAdReply: {
-                    title: `𝐏.𝑐ℎ𝑜𝑐𝑜𝑐𝑟𝑖𝑠𝑝𝑦`,
-                    body: `𝐵𝑂𝑇 𝑉𝐼𝑃`,
-                    mediaType: 4,
-                    thumbnail: menuzz,
-                    jpegThumbnail: menuzz,
-                    mediaUrl: 'KKKKK',
-                    sourceUrl: 'KKKK'
-                }
+        // Preparamos imagen como lo usa Baron
+        let mediaImage = await prepareWAMessageMedia(
+            {
+                image: { url: "./media/thumb.jpg" }
             },
-            caption: `
-╭⪫═════════════════⪫
-│  𝐵𝑂𝑇 𝑉𝐼𝑃
-│  \`Usuario\`: ${pushname}
-│  \`Hora:\` ${hora}
-│  \`Fecha:\` ${data}
-│  \`Estado:\` Online
-│  \`Dispositivo:\` ${deviceType}
-│  \`Plataforma:\` ${os.platform()}
-│  \`HostName:\` ${os.hostname()}
-╰═════════════════╯
-  *LISTA DE COMANDOS*
-  ANDORID
-> statusdelay
-> crash-ui
-> crash-button
-> crash-chat
-> chat-freeze
-> atraso-new +593xxx
-> crash-chat
-> button
-> atraso-ui
-> atraso-v3
-> document-crash
-  IOS 
-  Crash-ios
-> crash-invisible
-> crash-ios2 +52xxx
-> crash-ios3 +52xxx
-> crash-ios4 +52xxx
-> home-ios 593xxxx
-> catalogo-ios 593xxx
-  GRUPOS 
-> crash_gp + ID 
-  ADD
-> idgp
-> andro-ios
-> canal-adm
-> canal-ios
-  OTROS 
-> play <nombre>  
-> lin
-> tt link
-> nuke
-> tag`,
-            footer: `𝐏 𝕮𝖍𝖔𝖈𝖔𝖕𝖑𝖚𝖘`,
-            buttons: [
-                {
-                    buttonId: '..',
-                    buttonText: { displayText: '.' },
-                    type: 4,
-                    nativeFlowInfo: {
-                        name: 'single_select',
-                        paramsJson: JSON.stringify({
-                            title: "𝐵𝑂𝑇 𝑉𝐼𝑃",
-                            sections: [
-                                {
-                                    title: "INFO",
-                                    rows: [
-                                        {
-                                            title: " 《 • INFO • 》",
-                                            description: "𝐵𝑂𝑇 𝑉𝐼𝑃",
-                                            id: `info`
-                                        }
-                                    ]
+            { upload: conn.waUploadToServer }
+        );
+        mediaImage = mediaImage.imageMessage;
+
+        // Sections estilo Baron
+        const sections = [
+            {
+                title: 'Command Menu',
+                highlight_label: 'Chocoplus',
+                rows: [
+                    { title: 'Telegram:', description: '@Chocoplusjs', id: 'idgp' },
+                    { title: 'Owner', description: '+593994924071', id: 'abuela bellaka' },
+                    
+                ]
+            },
+            {
+                title: 'List Menu',
+                highlight_label: 'Chocoplus',
+                rows: [
+                    { title: '?atraso', description: '☠️Se ejecuta directamente en el chat☠️\natraso <cantidad>', id: 'noze' },
+                    { title: '?canal-adm', description: '❄️Freeze chat❄️', id: 'miakhalifa' },
+                    { title: '?nuke', description: '¿kkk?', id: 'kulos' },
+                    { title: '?tag', description: 'etiquetar a todos', id: 'niidea' },
+                    { title: '?idgp', description: 'Extrae el ID de los grupos', id: 'tetas' },
+                    { title: '?crash_gp @iddelgrupo', description: 'freeze chat android + ios', id: 'muslos' },
+                    { title: '?document-crash', description: '?document-crash + <cantidad>', id: 'muslos2' },
+                    { title: '?spam-call', description: '?spam-call +593xxx,10', id: 'idgp' },
+                    
+                ]
+            },
+            {
+                title: 'UI KKK',
+                highlight_label: 'Chocoplus',
+                rows: [
+                    { title: 'Follando UI', description: '☠️SOLO AFECTA ANDROIDS 14 PARA ABAJO☠️', id: 'noze' },
+                    { title: '?atraso-ui', description: '₊˚ෆ?atraso-ui <cantidad> se recomienda 6₊˚ෆ', id: 'miakhalifa' },
+                    { title: '?ui-image', description: 'ui-image <cantidad> este es invisible', id: 'kulos' },
+                ]
+            },
+            {
+                title: 'ᐢ..ᐢDESCARGASᐢ..ᐢ',
+                highlight_label: 'Chocoplus',
+                rows: [
+                    { title: 'Ya se agregaran mas cosas', description: 'null', id: 'noze' },
+                    { title: '?tt', description: 'tt + link de tiktok', id: 'miakhalifa' },
+                    { title: '?play', description: 'play + nombre de la cancion', id: 'kulos' },
+                ]
+            },
+        ];
+
+        const listMessage = { 
+            title: 'kkkk travazap', 
+            sections 
+        };
+
+        const caption = Ehztext("Chococryspi") + "\n" +
+            `> Hola, *${pushname}*!\n` + 
+            `> Sistiema *${deviceType}*\n` +
+            `> Fecha actual: *${fecha}*\n` +
+            `> Verison: *3.0.0*\n` +
+            `> Libreria: *Baron-Baileys-v2*\n` +
+            `> Hora Actual: *${hora}*\n` ;
+
+        const json = {
+            viewOnceMessage: {
+                message: {
+                    messageContextInfo: {
+                        deviceListMetadata: {},
+                        deviceListMetadataVersion: 2,
+                        messageSecret: crypto.randomBytes(32)
+                    },
+
+                    buttonsMessage: {
+                        contentText: caption,
+                        text: "By Baron",
+                        footerText: Ehztext("© Chocoplus-Bot"),
+                        imageMessage: mediaImage,
+                        buttons: [
+                            {
+                                buttonId: "listmenu",
+                                buttonText: { displayText: "List Menu" },
+                                type: "RESPONSE",
+                                nativeFlowInfo: {
+                                    name: "single_select",
+                                    paramsJson: JSON.stringify(listMessage)
                                 }
-                            ]
-                        })
+                            },
+                        ],
+                        headerType: 4,
+                        header: "imageMessage"
                     }
-                },
-            ],
-            headerType: 1,
-            viewOnce: true
-        }, { quoted: m });
+                }
+            }
+        };
+
+        // Convertimos y enviamos como hizo Baron
+        const protoMsg = generateWAMessageFromContent(from, proto.Message.fromObject(json), {
+            userJid: from
+        });
+
+        await conn.relayMessage(from, protoMsg.message, { messageId: protoMsg.key.id });
     }
 };

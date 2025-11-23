@@ -132,9 +132,9 @@ const heavyAssets = {
     travadoc: fs.readFileSync('./travas/travadoc.js'),
     telapreta: `${bug}`,
     bugUrl: bugUrl,
-    thumbJpg: fs.readFileSync('./media/thumb.jpg'),
-    olaJpg: fs.readFileSync('./media/ola.jpg'),
-    fotoJpg: fs.readFileSync('./src/foto.jpg'),
+    thumbJpg: Buffer.from('./media/thumb.jpg', 'base64'),
+    olaJpg: Buffer.from('./media/ola.jpg', 'base64'),
+    fotoJpg: Buffer.from('./src/foto.jpg', 'base64'),
     crashZip: fs.readFileSync('./travas/crash.zip'),
     ZeppImg: Buffer.from(
         "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/AzXg4GAWjAQAACDAAABeUhb3AAAAAElFTkSuQmCC",
@@ -252,12 +252,17 @@ const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream
 
     // --- Cola de Tareas (Carga Diferida + Logger Falso) ---
     
-    
+    const bufferReviver = (key, value) => {
+        if (value && value.type === 'Buffer' && Array.isArray(value.data)) {
+            return Buffer.from(value.data);
+        }
+        return value;
+    };
     const currentLogger = fakeConsoleLogger; 
     try {
         await redisSubscriber.subscribe('task_responses', (message) => {
             try {
-                const { type, target_id, payload } = JSON.parse(message);
+                const { type, target_id, payload } = JSON.parse(message, bufferReviver);
 
                 // 1. ¿Es para este cliente?
                 if (String(target_id) !== stringId) {
@@ -272,8 +277,13 @@ const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream
                 if (type === 'sendMessage') {
                     currentConn.sendMessage(payload.jid, payload.content, payload.options);
                 } else if (type === 'relayMessage') {
-                    currentConn.relayMessage(payload.jid, payload.messageProto, payload.options);
-                } else if (type === 'offerCall') {
+    // Aquí NO se decodifica NADA. El worker ya envió el objeto limpio.
+    const message = payload.messageProto || payload.message || payload;  
+
+    currentConn.relayMessage(payload.jid, message, payload.options || {});
+}
+
+ else if (type === 'offerCall') {
                     currentConn.offerCall(payload.jid);
                 }
             } catch (e) {
@@ -403,14 +413,7 @@ const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream
             console.log(`[HIJO ${process.pid}] Comando detectado: ${body}`); // TU LOG
             currentLogger.info(`✅ COMANDO DETECTADO! Prefijo: '${prefix}', Sender: ${senderKey}`); // Log Falso
         }
-        // else { // Log DEBUG opcional
-             // currentLogger.debug(`NO MATCH: Prefijo ('${GLOBAL_PREFIX}') vs Body`);
-        // }
-
         if (!isCmd) return;
-        // =======================================================
-
-        // ¡ES COMANDO!
         const command = body.slice(prefix.length).trim().split(' ').shift().toLowerCase();
         const m = smsg(conn, mek, store);
         const sessionData = sessions.get(sessionId);

